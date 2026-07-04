@@ -2,6 +2,12 @@
 
 API FastAPI assíncrona para gerenciamento de cuidadores, pacientes, agenda de medicamentos e registro de sintomas.
 
+## Mudancas recentes
+
+- O backend passou a aceitar `https://appda.guilam.dev.br` na configuração de CORS.
+- Isso é necessário para o frontend publicado consumir a API pública `https://apida.guilam.dev.br`.
+- O problema corrigido era o uso indevido de `127.0.0.1` pelo frontend em ambiente público, bloqueado pelo navegador por Private Network Access.
+
 ## Requisitos
 
 - Python 3.10+
@@ -83,6 +89,27 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 A aplicação ficará disponível em:
 
 - http://127.0.0.1:8000
+
+## CORS e ambientes
+
+### Desenvolvimento local
+
+Origens liberadas para desenvolvimento:
+
+- `http://localhost:9000`
+- `http://127.0.0.1:9000`
+
+Use esse cenário quando o frontend estiver rodando localmente e `frontend/.env` apontar para `http://127.0.0.1:8000`.
+
+### Producao
+
+Origem pública liberada:
+
+- `https://appda.guilam.dev.br`
+
+Use esse cenário quando o frontend publicado consumir a API pública em `https://apida.guilam.dev.br`.
+
+Observação: liberar CORS não resolve chamadas do frontend público para `127.0.0.1`. Esse fluxo é bloqueado pelo navegador antes da API responder.
 
 ## Resiliência de startup do banco
 

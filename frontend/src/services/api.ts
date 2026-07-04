@@ -1,6 +1,45 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000';
+const DEFAULT_LOCAL_API_BASE_URL = 'http://127.0.0.1:8000';
+const DEFAULT_PUBLIC_API_BASE_URL = 'https://apida.guilam.dev.br';
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost']);
+
+function normalizeBaseUrl(value: string | undefined) {
+  return value?.trim().replace(/\/+$/, '') ?? '';
+}
+
+function isLoopbackUrl(value: string) {
+  if (!value) {
+    return false;
+  }
+
+  try {
+    return LOOPBACK_HOSTS.has(new URL(value).hostname);
+  } catch {
+    return false;
+  }
+}
+
+function resolveApiBaseUrl() {
+  const configuredBaseUrl = normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL);
+
+  if (typeof window !== 'undefined') {
+    const currentHost = window.location.hostname;
+    const isLocalApp = LOOPBACK_HOSTS.has(currentHost);
+
+    if (!isLocalApp && isLoopbackUrl(configuredBaseUrl)) {
+      return DEFAULT_PUBLIC_API_BASE_URL;
+    }
+
+    if (!isLocalApp && !configuredBaseUrl && currentHost === 'appda.guilam.dev.br') {
+      return DEFAULT_PUBLIC_API_BASE_URL;
+    }
+  }
+
+  return configuredBaseUrl || DEFAULT_LOCAL_API_BASE_URL;
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 let accessToken: string | null = null;
 let unauthorizedHandler: (() => void) | null = null;
 let handlingUnauthorized = false;

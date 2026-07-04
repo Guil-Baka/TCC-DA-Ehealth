@@ -53,12 +53,52 @@ Copy-Item .env.example .env
 VITE_API_BASE_URL=http://127.0.0.1:8000
 ```
 
+Para o deploy do frontend em `appda.guilam.dev.br`, configure `VITE_API_BASE_URL=https://apida.guilam.dev.br` no ambiente de build. Se essa variável continuar apontando para `127.0.0.1`, o navegador bloqueará a chamada por Private Network Access.
+
+## Mudancas recentes
+
+- O frontend passou a detectar quando está rodando em host público e deixa de usar fallback loopback como base da API.
+- O domínio público `appda.guilam.dev.br` deve apontar para `https://apida.guilam.dev.br`.
+- Essa mudança evita falhas de login e outras chamadas bloqueadas por Private Network Access.
+
+## Configuracao por ambiente
+
+### Desenvolvimento local
+
+Use este valor em `.env` quando frontend e backend estiverem na mesma máquina:
+
+```env
+VITE_API_BASE_URL=http://127.0.0.1:8000
+```
+
+Cenário esperado:
+
+- Frontend em `http://localhost:9000` ou `http://127.0.0.1:9000`
+- Backend em `http://127.0.0.1:8000`
+
+### Producao
+
+No ambiente de build ou deploy do frontend, use:
+
+```env
+VITE_API_BASE_URL=https://apida.guilam.dev.br
+```
+
+Cenário esperado:
+
+- Frontend em `https://appda.guilam.dev.br`
+- Backend em `https://apida.guilam.dev.br`
+
+Se o frontend publicado continuar com `VITE_API_BASE_URL=http://127.0.0.1:8000`, o navegador bloqueará as requisições antes mesmo de chegar ao backend.
+
 ## Execucao
 
 ### Desenvolvimento
 
 ```bash
 npm run dev
+npm run dev -- --host 0.0.0.0 --port 9000
+
 ```
 
 ### Build de producao
@@ -88,6 +128,12 @@ Exemplo de start do backend no diretório `backend`:
 
 ```bash
 uvicorn main:app --reload
+```
+
+Para desenvolvimento em rede local, o backend pode ser exposto com:
+
+```bash
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ## Comportamentos importantes

@@ -619,14 +619,18 @@ app.add_middleware(
         "127.0.0.1",
         "guilam.dev.br",
         "www.guilam.dev.br",
+        "apida.guilam.dev.br",
+        "appda.guilam.dev.br",
     ],
 )
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
+        "http://localhost:9000",
+        "http://127.0.0.1:9000",
+        "http://appda.guilam.dev.br",
+        "https://appda.guilam.dev.br",
     ],
     allow_credentials=True,
     allow_methods=["*"],
