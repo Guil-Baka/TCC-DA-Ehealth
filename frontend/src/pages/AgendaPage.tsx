@@ -13,6 +13,7 @@ import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { FormField } from "../components/ui/FormField";
 import { FormInput } from "../components/ui/FormInput";
+import { PaginationControls } from "../components/ui/PaginationControls";
 import { FormSelect } from "../components/ui/FormSelect";
 
 const initialForm: AgendaPayload = {
@@ -21,6 +22,7 @@ const initialForm: AgendaPayload = {
   dosagem: "",
   horario: "08:00:00",
 };
+const PAGE_SIZE = 10;
 
 function normalizeHorario(value: string) {
   if (value.length === 5) return `${value}:00`;
@@ -34,6 +36,7 @@ export function AgendaPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
 
   const ordered = useMemo(
     () => [...agendas].sort((a, b) => a.horario.localeCompare(b.horario)),
@@ -45,14 +48,21 @@ export function AgendaPage() {
     [pacientes],
   );
 
-  async function refresh() {
+  async function refresh(targetPage = page) {
     setLoading(true);
     setError("");
     try {
       const [agendasData, pacientesData] = await Promise.all([
-        listAgendas(),
-        listPacientes(),
+        listAgendas({
+          skip: (targetPage - 1) * PAGE_SIZE,
+          limit: PAGE_SIZE,
+        }),
+        listPacientes({ skip: 0, limit: 1000 }),
       ]);
+      if (!agendasData.length && targetPage > 1) {
+        setPage(targetPage - 1);
+        return;
+      }
       setAgendas(agendasData);
       setPacientes(pacientesData);
     } catch {
@@ -63,8 +73,8 @@ export function AgendaPage() {
   }
 
   useEffect(() => {
-    void refresh();
-  }, []);
+    void refresh(page);
+  }, [page]);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -84,7 +94,7 @@ export function AgendaPage() {
       }
       setForm(initialForm);
       setEditingId(null);
-      await refresh();
+      await refresh(page);
     } catch {
       setError(
         "Falha ao salvar agenda. Verifique se o paciente informado existe.",
@@ -96,7 +106,7 @@ export function AgendaPage() {
     if (!confirm("Deseja remover este lembrete?")) return;
     try {
       await deleteAgenda(id);
-      await refresh();
+      await refresh(page);
     } catch {
       setError("Não foi possível remover o item da agenda.");
     }
@@ -212,50 +222,61 @@ export function AgendaPage() {
             Carregando...
           </p>
         ) : (
-          <ul className="mt-4 space-y-3">
-            {ordered.map((agenda) => (
-              <li
-                key={agenda.id_agenda}
-                className="rounded-2xl border border-slate-200 p-4 theme-dark:border-slate-700"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-slate-800 theme-dark:text-slate-100">
-                      {agenda.medicamento}
-                    </p>
-                    <p className="text-sm text-slate-600 theme-dark:text-slate-300">
-                      Paciente: {anonymizePacienteId(agenda.id_paciente)} |
-                      Dosagem: {agenda.dosagem}
-                    </p>
-                    <p className="mt-1 inline-flex items-center gap-1 text-sm font-semibold text-teal-700 theme-dark:text-teal-300">
-                      <Clock3 size={14} /> {agenda.horario.slice(0, 5)}
-                    </p>
+          <>
+            <ul className="mt-4 space-y-3">
+              {ordered.map((agenda) => (
+                <li
+                  key={agenda.id_agenda}
+                  className="rounded-2xl border border-slate-200 p-4 theme-dark:border-slate-700"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-slate-800 theme-dark:text-slate-100">
+                        {agenda.medicamento}
+                      </p>
+                      <p className="text-sm text-slate-600 theme-dark:text-slate-300">
+                        Paciente: {anonymizePacienteId(agenda.id_paciente)} |
+                        Dosagem: {agenda.dosagem}
+                      </p>
+                      <p className="mt-1 inline-flex items-center gap-1 text-sm font-semibold text-teal-700 theme-dark:text-teal-300">
+                        <Clock3 size={14} /> {agenda.horario.slice(0, 5)}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => onEdit(agenda)}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <PencilLine size={14} /> Editar
+                      </Button>
+                      <Button
+                        onClick={() => onDelete(agenda.id_agenda)}
+                        variant="danger"
+                        size="sm"
+                      >
+                        <Trash2 size={14} /> Excluir
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => onEdit(agenda)}
-                      variant="outline"
-                      size="sm"
-                    >
-                      <PencilLine size={14} /> Editar
-                    </Button>
-                    <Button
-                      onClick={() => onDelete(agenda.id_agenda)}
-                      variant="danger"
-                      size="sm"
-                    >
-                      <Trash2 size={14} /> Excluir
-                    </Button>
-                  </div>
-                </div>
-              </li>
-            ))}
-            {!ordered.length && (
-              <p className="text-sm text-slate-500">
-                Nenhum item de agenda cadastrado.
-              </p>
-            )}
-          </ul>
+                </li>
+              ))}
+              {!ordered.length && (
+                <p className="text-sm text-slate-500">
+                  Nenhum item de agenda cadastrado.
+                </p>
+              )}
+            </ul>
+            <PaginationControls
+              page={page}
+              pageSize={PAGE_SIZE}
+              itemCount={ordered.length}
+              loading={loading}
+              label="Agenda paginada por 10 registros"
+              onPrevious={() => setPage((current) => Math.max(1, current - 1))}
+              onNext={() => setPage((current) => current + 1)}
+            />
+          </>
         )}
       </Card>
     </section>

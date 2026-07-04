@@ -6,7 +6,7 @@ from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy import select, ForeignKey, DateTime, Time, Integer, String, Text
+from sqlalchemy import select, ForeignKey, DateTime, Time, Integer, String, Text, desc
 from sqlalchemy.exc import SQLAlchemyError
 import bcrypt  # Substitui passlib com bcrypt
 import json
@@ -501,9 +501,9 @@ class AgendaMedicamentosResponse(BaseModel):
 class RegistroSintomasCreate(BaseModel):
     id_paciente: int
     data_registro: datetime = Field(default_factory=datetime.utcnow)
-    sintomas_cognitivos: str = Field(..., min_length=1)
-    sintomas_comportamentais: str = Field(..., min_length=1)
-    sintomas_motores: str = Field(..., min_length=1)
+    sintomas_cognitivos: str = Field(default="")
+    sintomas_comportamentais: str = Field(default="")
+    sintomas_motores: str = Field(default="")
     nivel_humor: str = Field(..., min_length=1, max_length=100)
 
     @field_validator(
@@ -520,9 +520,9 @@ class RegistroSintomasCreate(BaseModel):
 class RegistroSintomasUpdate(BaseModel):
     id_paciente: int
     data_registro: datetime
-    sintomas_cognitivos: str = Field(..., min_length=1)
-    sintomas_comportamentais: str = Field(..., min_length=1)
-    sintomas_motores: str = Field(..., min_length=1)
+    sintomas_cognitivos: str = Field(default="")
+    sintomas_comportamentais: str = Field(default="")
+    sintomas_motores: str = Field(default="")
     nivel_humor: str = Field(..., min_length=1, max_length=100)
 
     @field_validator(
@@ -1092,6 +1092,7 @@ async def list_pacientes(
     result = await db.execute(
         select(Paciente)
         .where(Paciente.id_usuario == current_user.id_usuario)
+        .order_by(Paciente.id_paciente.asc())
         .offset(skip)
         .limit(limit)
     )
@@ -1276,6 +1277,7 @@ async def list_agenda_medicamentos(
         select(AgendaMedicamentos)
         .join(Paciente, AgendaMedicamentos.id_paciente == Paciente.id_paciente)
         .where(Paciente.id_usuario == current_user.id_usuario)
+        .order_by(AgendaMedicamentos.horario.asc(), AgendaMedicamentos.id_agenda.asc())
         .offset(skip)
         .limit(limit)
     )
@@ -1473,6 +1475,7 @@ async def list_registro_sintomas(
         select(RegistroSintomas)
         .join(Paciente, RegistroSintomas.id_paciente == Paciente.id_paciente)
         .where(Paciente.id_usuario == current_user.id_usuario)
+        .order_by(desc(RegistroSintomas.data_registro), desc(RegistroSintomas.id_registro))
         .offset(skip)
         .limit(limit)
     )

@@ -13,6 +13,7 @@ import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { FormField } from "../components/ui/FormField";
 import { FormInput } from "../components/ui/FormInput";
+import { PaginationControls } from "../components/ui/PaginationControls";
 import { FormSelect } from "../components/ui/FormSelect";
 
 const initialForm: PacientePayload = {
@@ -23,6 +24,7 @@ const initialForm: PacientePayload = {
 };
 
 const ESTAGIO_OPTIONS = ["leve", "moderado", "avançado"];
+const PAGE_SIZE = 10;
 
 export function PacientesPage() {
   const { user } = useAuth();
@@ -34,6 +36,7 @@ export function PacientesPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
 
   const ordered = useMemo(
     () => [...pacientes].sort((a, b) => a.id_paciente - b.id_paciente),
@@ -46,11 +49,18 @@ export function PacientesPage() {
     }
   }, [user]);
 
-  async function refresh() {
+  async function refresh(targetPage = page) {
     setLoading(true);
     setError("");
     try {
-      const data = await listPacientes();
+      const data = await listPacientes({
+        skip: (targetPage - 1) * PAGE_SIZE,
+        limit: PAGE_SIZE,
+      });
+      if (!data.length && targetPage > 1) {
+        setPage(targetPage - 1);
+        return;
+      }
       setPacientes(data);
     } catch {
       setError(
@@ -62,8 +72,8 @@ export function PacientesPage() {
   }
 
   useEffect(() => {
-    void refresh();
-  }, []);
+    void refresh(page);
+  }, [page]);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -75,7 +85,7 @@ export function PacientesPage() {
       }
       setForm({ ...initialForm, id_usuario: user?.id_usuario ?? 0 });
       setEditingId(null);
-      await refresh();
+      await refresh(page);
     } catch {
       setError(
         "Falha ao salvar paciente. O backend permite apenas pacientes vinculados ao usuário logado.",
@@ -87,7 +97,7 @@ export function PacientesPage() {
     if (!confirm("Deseja remover este paciente?")) return;
     try {
       await deletePaciente(id);
-      await refresh();
+      await refresh(page);
     } catch {
       setError("Não foi possível remover o paciente.");
     }
@@ -211,48 +221,59 @@ export function PacientesPage() {
             Carregando...
           </p>
         ) : (
-          <ul className="mt-4 space-y-3">
-            {ordered.map((paciente) => (
-              <li
-                key={paciente.id_paciente}
-                className="rounded-2xl border border-slate-200 p-4 theme-dark:border-slate-700"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-slate-800 theme-dark:text-slate-100">
-                      {paciente.iniciais} (
-                      {anonymizePacienteId(paciente.id_paciente)})
-                    </p>
-                    <p className="text-sm text-slate-600 theme-dark:text-slate-300">
-                      Estágio: {paciente.estagio_doenca} | Idade:{" "}
-                      {paciente.idade} | Cuidador: {paciente.id_usuario}
-                    </p>
+          <>
+            <ul className="mt-4 space-y-3">
+              {ordered.map((paciente) => (
+                <li
+                  key={paciente.id_paciente}
+                  className="rounded-2xl border border-slate-200 p-4 theme-dark:border-slate-700"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-slate-800 theme-dark:text-slate-100">
+                        {paciente.iniciais} (
+                        {anonymizePacienteId(paciente.id_paciente)})
+                      </p>
+                      <p className="text-sm text-slate-600 theme-dark:text-slate-300">
+                        Estágio: {paciente.estagio_doenca} | Idade:{" "}
+                        {paciente.idade} | Cuidador: {paciente.id_usuario}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => onEdit(paciente)}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <PencilLine size={14} /> Editar
+                      </Button>
+                      <Button
+                        onClick={() => onDelete(paciente.id_paciente)}
+                        variant="danger"
+                        size="sm"
+                      >
+                        <Trash2 size={14} /> Excluir
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => onEdit(paciente)}
-                      variant="outline"
-                      size="sm"
-                    >
-                      <PencilLine size={14} /> Editar
-                    </Button>
-                    <Button
-                      onClick={() => onDelete(paciente.id_paciente)}
-                      variant="danger"
-                      size="sm"
-                    >
-                      <Trash2 size={14} /> Excluir
-                    </Button>
-                  </div>
-                </div>
-              </li>
-            ))}
-            {!ordered.length && (
-              <p className="text-sm text-slate-500">
-                Nenhum paciente cadastrado ainda.
-              </p>
-            )}
-          </ul>
+                </li>
+              ))}
+              {!ordered.length && (
+                <p className="text-sm text-slate-500">
+                  Nenhum paciente cadastrado ainda.
+                </p>
+              )}
+            </ul>
+            <PaginationControls
+              page={page}
+              pageSize={PAGE_SIZE}
+              itemCount={ordered.length}
+              loading={loading}
+              label="Pacientes paginados por 10 registros"
+              onPrevious={() => setPage((current) => Math.max(1, current - 1))}
+              onNext={() => setPage((current) => current + 1)}
+            />
+          </>
         )}
       </Card>
     </section>

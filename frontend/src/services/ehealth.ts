@@ -8,10 +8,14 @@ import type {
   RegistroSintoma,
 } from '../types/api';
 
-export async function listPacientes() {
-  // The backend defaults to limit=10; request a larger page to avoid UI truncation.
+interface ListParams {
+  skip?: number;
+  limit?: number;
+}
+
+export async function listPacientes(params: ListParams = { skip: 0, limit: 1000 }) {
   const { data } = await api.get<Paciente[]>('/pacientes/', {
-    params: { skip: 0, limit: 1000 },
+    params,
   });
   return data;
 }
@@ -30,9 +34,9 @@ export async function deletePaciente(id: number) {
   await api.delete(`/pacientes/${id}`);
 }
 
-export async function listAgendas() {
+export async function listAgendas(params: ListParams = { skip: 0, limit: 1000 }) {
   const { data } = await api.get<AgendaMedicamento[]>('/agenda-medicamentos/', {
-    params: { skip: 0, limit: 1000 },
+    params,
   });
   return data;
 }
@@ -51,9 +55,9 @@ export async function deleteAgenda(id: number) {
   await api.delete(`/agenda-medicamentos/${id}`);
 }
 
-export async function listRegistros() {
+export async function listRegistros(params: ListParams = { skip: 0, limit: 1000 }) {
   const { data } = await api.get<RegistroSintoma[]>('/registro-sintomas/', {
-    params: { skip: 0, limit: 1000 },
+    params,
   });
   return data;
 }

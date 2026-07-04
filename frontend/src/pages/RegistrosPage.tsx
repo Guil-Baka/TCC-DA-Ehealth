@@ -13,6 +13,7 @@ import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { FormField } from "../components/ui/FormField";
 import { FormInput } from "../components/ui/FormInput";
+import { PaginationControls } from "../components/ui/PaginationControls";
 import { FormSelect } from "../components/ui/FormSelect";
 
 function toDatetimeLocalValue(date: Date) {
@@ -63,6 +64,7 @@ const SINTOMAS_FUNCIONAIS_OPTIONS = [
   "Dificuldade de expressar opiniões",
   "Dificuldade de sair e voltar para casa sozinho",
 ];
+const PAGE_SIZE = 10;
 
 function parseStoredSelections(value: string) {
   return value
@@ -137,6 +139,7 @@ export function RegistrosPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
 
   const ordered = useMemo(
     () =>
@@ -181,14 +184,21 @@ export function RegistrosPage() {
     [selectedFuncionais],
   );
 
-  async function refresh() {
+  async function refresh(targetPage = page) {
     setLoading(true);
     setError("");
     try {
       const [registrosData, pacientesData] = await Promise.all([
-        listRegistros(),
-        listPacientes(),
+        listRegistros({
+          skip: (targetPage - 1) * PAGE_SIZE,
+          limit: PAGE_SIZE,
+        }),
+        listPacientes({ skip: 0, limit: 1000 }),
       ]);
+      if (!registrosData.length && targetPage > 1) {
+        setPage(targetPage - 1);
+        return;
+      }
       setRegistros(registrosData);
       setPacientes(pacientesData);
     } catch {
@@ -199,29 +209,14 @@ export function RegistrosPage() {
   }
 
   useEffect(() => {
-    void refresh();
-  }, []);
+    void refresh(page);
+  }, [page]);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!form.id_paciente) {
       setError("Selecione um paciente para salvar o registro.");
-      return;
-    }
-
-    if (!selectedCognitivos.length) {
-      setError("Selecione ao menos um sintoma cognitivo.");
-      return;
-    }
-
-    if (!selectedComportamentais.length) {
-      setError("Selecione ao menos um sintoma comportamental.");
-      return;
-    }
-
-    if (!selectedFuncionais.length) {
-      setError("Selecione ao menos um sintoma funcional.");
       return;
     }
 
@@ -245,7 +240,7 @@ export function RegistrosPage() {
       setSelectedFuncionais([]);
       setDatetimeInput(nowInput());
       setEditingId(null);
-      await refresh();
+      await refresh(page);
     } catch {
       setError("Falha ao salvar registro. Verifique o ID do paciente.");
     }
@@ -255,7 +250,7 @@ export function RegistrosPage() {
     if (!confirm("Deseja excluir este registro?")) return;
     try {
       await deleteRegistro(id);
-      await refresh();
+      await refresh(page);
     } catch {
       setError("Não foi possível excluir o registro.");
     }
@@ -418,56 +413,67 @@ export function RegistrosPage() {
             Carregando...
           </p>
         ) : (
-          <ul className="mt-4 space-y-3">
-            {ordered.map((registro) => (
-              <li
-                key={registro.id_registro}
-                className="rounded-2xl border border-slate-200 p-4 theme-dark:border-slate-700"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <p className="font-semibold text-slate-800 theme-dark:text-slate-100">
-                      {anonymizePacienteId(registro.id_paciente)} |{" "}
-                      {formatDate(registro.data_registro)}
-                    </p>
-                    <p className="text-sm text-slate-600 theme-dark:text-slate-300">
-                      Cognitivos: {registro.sintomas_cognitivos}
-                    </p>
-                    <p className="text-sm text-slate-600 theme-dark:text-slate-300">
-                      Comportamentais: {registro.sintomas_comportamentais}
-                    </p>
-                    <p className="text-sm text-slate-600 theme-dark:text-slate-300">
-                      Funcionais: {registro.sintomas_motores}
-                    </p>
-                    <p className="text-sm text-slate-600 theme-dark:text-slate-300">
-                      Humor: {registro.nivel_humor}
-                    </p>
+          <>
+            <ul className="mt-4 space-y-3">
+              {ordered.map((registro) => (
+                <li
+                  key={registro.id_registro}
+                  className="rounded-2xl border border-slate-200 p-4 theme-dark:border-slate-700"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="font-semibold text-slate-800 theme-dark:text-slate-100">
+                        {anonymizePacienteId(registro.id_paciente)} |{" "}
+                        {formatDate(registro.data_registro)}
+                      </p>
+                      <p className="text-sm text-slate-600 theme-dark:text-slate-300">
+                        Cognitivos: {registro.sintomas_cognitivos}
+                      </p>
+                      <p className="text-sm text-slate-600 theme-dark:text-slate-300">
+                        Comportamentais: {registro.sintomas_comportamentais}
+                      </p>
+                      <p className="text-sm text-slate-600 theme-dark:text-slate-300">
+                        Funcionais: {registro.sintomas_motores}
+                      </p>
+                      <p className="text-sm text-slate-600 theme-dark:text-slate-300">
+                        Humor: {registro.nivel_humor}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => onEdit(registro)}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <PencilLine size={14} /> Editar
+                      </Button>
+                      <Button
+                        onClick={() => onDelete(registro.id_registro)}
+                        variant="danger"
+                        size="sm"
+                      >
+                        <Trash2 size={14} /> Excluir
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => onEdit(registro)}
-                      variant="outline"
-                      size="sm"
-                    >
-                      <PencilLine size={14} /> Editar
-                    </Button>
-                    <Button
-                      onClick={() => onDelete(registro.id_registro)}
-                      variant="danger"
-                      size="sm"
-                    >
-                      <Trash2 size={14} /> Excluir
-                    </Button>
-                  </div>
-                </div>
-              </li>
-            ))}
-            {!ordered.length && (
-              <p className="text-sm text-slate-500">
-                Nenhum registro cadastrado ainda.
-              </p>
-            )}
-          </ul>
+                </li>
+              ))}
+              {!ordered.length && (
+                <p className="text-sm text-slate-500">
+                  Nenhum registro cadastrado ainda.
+                </p>
+              )}
+            </ul>
+            <PaginationControls
+              page={page}
+              pageSize={PAGE_SIZE}
+              itemCount={ordered.length}
+              loading={loading}
+              label="Registros paginados por 10 itens"
+              onPrevious={() => setPage((current) => Math.max(1, current - 1))}
+              onNext={() => setPage((current) => current + 1)}
+            />
+          </>
         )}
       </Card>
     </section>
