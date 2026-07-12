@@ -5,6 +5,7 @@ Aplicação React + Vite + Tailwind para consumo da API FastAPI do projeto TCC.
 ## Recursos implementados
 
 - Página inicial institucional com foco em educação e suporte ao cuidador.
+- Seção de artigos sobre Alzheimer na página de início com filtro por palavra-chave e abertura do link ao clicar no título.
 - Autenticação JWT completa (cadastro, login e sessão com token Bearer).
 - Logout automático quando o token expira (tratamento global de 401).
 - Dashboard interativo com métricas e gráficos (Recharts).

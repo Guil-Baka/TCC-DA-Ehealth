@@ -174,6 +174,12 @@ O arquivo `main.py` cria automaticamente as tabelas ao iniciar a aplicação.
 - `sintomas_motores`
 - `nivel_humor`
 
+### `artigos_alzheimer`
+
+- `id_artigo` - chave primária
+- `titulo`
+- `link`
+
 ## Endpoints
 
 ### Saúde
@@ -183,6 +189,13 @@ O arquivo `main.py` cria automaticamente as tabelas ao iniciar a aplicação.
 
 - `GET /health`
   - Retorna o status da aplicação.
+
+### Artigos sobre Alzheimer
+
+- `GET /artigos-alzheimer/`
+  - Lista artigos sobre Alzheimer.
+  - Aceita filtro por título com `q`.
+  - Aceita paginação com `skip` e `limit`.
 
 ### Cuidadores
 

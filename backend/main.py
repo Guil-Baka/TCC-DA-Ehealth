@@ -265,6 +265,14 @@ class LogAplicacao(Base):
 
     usuario: Mapped[Optional["Usuario"]] = relationship()
 
+
+class ArtigoAlzheimer(Base):
+    __tablename__ = "artigos_alzheimer"
+
+    id_artigo: Mapped[int] = mapped_column(primary_key=True, index=True)
+    titulo: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    link: Mapped[str] = mapped_column(String(600), nullable=False)
+
 # --- Hash de Senha com bcrypt ---
 
 
@@ -565,6 +573,61 @@ class LogAplicacaoResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
+class ArtigoAlzheimerResponse(BaseModel):
+    id_artigo: int
+    titulo: str
+    link: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+DEFAULT_ALZHEIMER_ARTICLES: list[dict[str, str]] = [
+    {
+        "titulo": "Doença de Alzheimer - Organização Mundial da Saúde (OMS)",
+        "link": "https://www.who.int/news-room/fact-sheets/detail/dementia",
+    },
+    {
+        "titulo": "Alzheimer's disease - Mayo Clinic",
+        "link": "https://www.mayoclinic.org/diseases-conditions/alzheimers-disease/symptoms-causes/syc-20350447",
+    },
+    {
+        "titulo": "Alzheimer's disease - National Institute on Aging",
+        "link": "https://www.nia.nih.gov/health/alzheimers-and-dementia/alzheimers-disease-fact-sheet",
+    },
+    {
+        "titulo": "Demência e Alzheimer - Ministério da Saúde",
+        "link": "https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/d/demencias",
+    },
+    {
+        "titulo": "Doença de Alzheimer - Biblioteca Virtual em Saúde",
+        "link": "https://bvsms.saude.gov.br/doenca-de-alzheimer/",
+    },
+    {
+        "titulo": "Alzheimer's Association - Symptoms and diagnosis",
+        "link": "https://www.alz.org/alzheimers-dementia/10_signs",
+    },
+]
+
+
+async def seed_default_alzheimer_articles() -> None:
+    """Popular tabela de artigos de Alzheimer com conteúdo inicial, quando vazia."""
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(ArtigoAlzheimer.id_artigo).limit(1)
+        )
+        existing_article_id = result.scalar_one_or_none()
+        if existing_article_id is not None:
+            return
+
+        session.add_all(
+            [
+                ArtigoAlzheimer(titulo=item["titulo"], link=item["link"])
+                for item in DEFAULT_ALZHEIMER_ARTICLES
+            ]
+        )
+        await session.commit()
+
 # --- Inicialização do Banco de Dados ---
 
 
@@ -576,6 +639,7 @@ async def lifespan(app: FastAPI):
         try:
             async with engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
+            await seed_default_alzheimer_articles()
             break
         except Exception as exc:
             if attempt >= DB_STARTUP_MAX_RETRIES:
@@ -715,6 +779,32 @@ async def read_root() -> dict[str, str]:
 async def health_check() -> dict[str, str]:
     """Endpoint de verificação de saúde."""
     return {"status": "ok"}
+
+
+@app.get(
+    "/artigos-alzheimer/",
+    response_model=list[ArtigoAlzheimerResponse],
+    summary="Listar artigos sobre Alzheimer",
+)
+async def list_alzheimer_articles(
+    q: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 20,
+    db: AsyncSession = Depends(get_db),
+) -> list[ArtigoAlzheimer]:
+    normalized_query = (q or "").strip()
+    if normalized_query:
+        normalized_query = validate_safe_text(normalized_query, "q")
+
+    statement = select(ArtigoAlzheimer)
+    if normalized_query:
+        statement = statement.where(
+            ArtigoAlzheimer.titulo.ilike(f"%{normalized_query}%")
+        )
+
+    statement = statement.order_by(ArtigoAlzheimer.id_artigo.asc()).offset(skip).limit(limit)
+    result = await db.execute(statement)
+    return result.scalars().all()
 
 
 # --- Endpoints de Autenticação ---

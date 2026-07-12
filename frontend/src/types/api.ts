@@ -69,3 +69,9 @@ export interface RegistroPayload {
   sintomas_motores: string;
   nivel_humor: string;
 }
+
+export interface ArtigoAlzheimer {
+  id_artigo: number;
+  titulo: string;
+  link: string;
+}

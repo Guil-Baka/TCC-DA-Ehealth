@@ -2,6 +2,7 @@ import { api } from './api';
 import type {
   AgendaMedicamento,
   AgendaPayload,
+  ArtigoAlzheimer,
   Paciente,
   PacientePayload,
   RegistroPayload,
@@ -74,4 +75,16 @@ export async function updateRegistro(id: number, payload: RegistroPayload) {
 
 export async function deleteRegistro(id: number) {
   await api.delete(`/registro-sintomas/${id}`);
+}
+
+export async function listAlzheimerArticles(
+  params: { q?: string; skip?: number; limit?: number } = {
+    skip: 0,
+    limit: 50,
+  },
+) {
+  const { data } = await api.get<ArtigoAlzheimer[]>('/artigos-alzheimer/', {
+    params,
+  });
+  return data;
 }
